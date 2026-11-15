@@ -201,4 +201,49 @@ cred_err=$(sh "$GEN" "$bare_tsv" 2>&1 >/dev/null)
 assert_contains "$cred_err" "gen-config:" "the failure message names the script"
 assert_contains "$cred_err" "endpoint.hostname is not set" "the failure message names the missing key"
 
+# --- exclusions file overrides the routing-profile list -----------------------------
+
+excl_file="$TT_TEST_TMP/exclusions.toml"
+cat > "$excl_file" <<'EOF'
+# A plain TOML fragment: the top-level exclusions array is spliced into
+# client.toml verbatim and the routing-profile list is ignored.
+exclusions = [
+    # --- local ---
+    "override.example",
+    "*.override.example",
+    "192.0.2.0/24",
+]
+EOF
+
+excl_tsv="$TT_TEST_TMP/exclusions-file.tsv"
+printf 'main.enabled\t1\nmain.exclusions_file\t%s\nendpoint.hostname\tvpn.example.com\nendpoint.address\t1.2.3.4:443\nendpoint.username\talice\nendpoint.password\ts3cret\nrouting_profile.name\tDefault\nrouting_profile.mode\tvpn\nrouting_profile.bypass_rules\tbank.example\n' "$excl_file" > "$excl_tsv"
+
+excl_out=$(sh "$GEN" "$excl_tsv")
+
+assert_contains "$excl_out" '# exclusions: overridden by' "the override names its source file"
+assert_contains "$excl_out" '"override.example"' "the file array lands in the output verbatim"
+assert_contains "$excl_out" '"192.0.2.0/24"' "the file array carries CIDR entries too"
+assert_contains "$excl_out" "# --- local ---" "comment lines inside the array survive the splice"
+assert_eq "0" "$(count_occ bank.example "$excl_out")" \
+    "the routing-profile list is ignored when the file overrides it"
+
+inline_tsv="$TT_TEST_TMP/exclusions-inline.tsv"
+printf 'exclusions = ["inline.example", "198.51.100.0/24"]\n' > "$TT_TEST_TMP/inline.toml"
+printf 'main.enabled\t1\nmain.exclusions_file\t%s\nendpoint.hostname\tvpn.example.com\nendpoint.address\t1.2.3.4:443\nendpoint.username\talice\nendpoint.password\ts3cret\n' "$TT_TEST_TMP/inline.toml" > "$inline_tsv"
+
+inline_out=$(sh "$GEN" "$inline_tsv")
+
+assert_contains "$inline_out" 'exclusions = ["inline.example", "198.51.100.0/24"]' \
+    "a single-line array is spliced as one line"
+
+missing_tsv="$TT_TEST_TMP/exclusions-missing.tsv"
+printf 'main.enabled\t1\nmain.exclusions_file\t%s\nendpoint.hostname\tvpn.example.com\nendpoint.address\t1.2.3.4:443\nendpoint.username\talice\nendpoint.password\ts3cret\nendpoint.routing_profile\tDefault\nrouting_profile.name\tDefault\nrouting_profile.mode\tvpn\nrouting_profile.bypass_rules\tbank.example\n' "$TT_TEST_TMP/nonexistent.toml" > "$missing_tsv"
+
+missing_out=$(sh "$GEN" "$missing_tsv")
+
+assert_contains "$missing_out" 'exclusions = ["bank.example"]' \
+    "an unreadable file falls back to the routing-profile list"
+assert_eq "0" "$(count_occ overridden "$missing_out")" \
+    "the fallback does not claim a file override"
+
 tt_test_summary

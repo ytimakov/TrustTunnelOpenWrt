@@ -96,12 +96,51 @@ and its dependencies.
 Run the installer:
 
 ```sh
-sh -c "$(wget -O - https://raw.githubusercontent.com/TrustTunnel/TrustTunnelOpenWrt/master/install.sh)"
+sh -c "$(wget -O - https://raw.githubusercontent.com/ytimakov/TrustTunnelOpenWrt/master/install.sh)"
 ```
 
 If your router uses an older installer URL, run this command again. The
 command points the package manager at the current feed. The settings and
 the service state stay the same.
+
+### The runet-exclusions patch (this fork)
+
+This fork adds one feature on top of the official packages: the client
+config generator reads an optional exclusions file and, when it exists,
+splices its top-level `exclusions = [...]` array into the generated
+`/var/etc/trusttunnel/client.toml` verbatim, overriding the
+routing-profile list. The routing-profile **mode** still applies, so for
+the whole-runet bypass put the profile into `vpn` mode (general) and let
+the file carry the direct list.
+
+Install the packages with the installer above, then apply the patch:
+
+```sh
+sh -c "$(wget -O - https://raw.githubusercontent.com/ytimakov/TrustTunnelOpenWrt/master/scripts/install-exclusions-patch.sh)"
+```
+
+The patch replaces one file (`/usr/libexec/trusttunnel/gen-config`),
+keeps the stock copy as `gen-config.orig`, and is idempotent. Two things
+to remember:
+
+- A `trusttunnel` **package upgrade restores the stock generator** —
+  rerun the patch script after every upgrade.
+- The patch lives only in this fork; the official feed keeps shipping
+  the unpatched generator.
+
+Deliver the exclusions fragment — a plain TOML file with a single
+top-level array — to `/etc/trusttunnel/exclusions.toml`:
+
+```sh
+scp trusttunnel_exclusions.toml root@192.168.1.1:/etc/trusttunnel/exclusions.toml
+uci set trusttunnel.@routing_profile[-1].mode='vpn'
+uci commit trusttunnel && service trusttunnel restart
+grep -m2 exclusions /var/etc/trusttunnel/client.toml
+```
+
+The `# exclusions: overridden by ...` comment in the generated config
+confirms the file won. The path is configurable:
+`uci set trusttunnel.main.exclusions_file='/path/to/file.toml'`.
 
 The script does these steps:
 

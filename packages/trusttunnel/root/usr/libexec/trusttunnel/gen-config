@@ -23,6 +23,13 @@
 # tun mode emits [listener.tun] with the routing owned by the package,
 # proxy mode emits [listener.socks] instead. The client accepts exactly
 # one listener, so the blocks are mutually exclusive by construction.
+#
+# An optional exclusions file (main.exclusions_file, default
+# /etc/trusttunnel/exclusions.toml) overrides the routing-profile list:
+# when the file exists and holds a top-level exclusions array, the array
+# is spliced into the output verbatim and the profile list is ignored.
+# The array must be either on one line or closed by a bracket on its own
+# line; the fragment is not validated, its validity is the author's job.
 
 set -u
 
@@ -32,6 +39,25 @@ TT_LIBDIR="${TT_LIBDIR:-$(dirname "$0")}"
 . "$TT_LIBDIR/records.sh"
 
 TT_RECORDS=${1:?usage: gen-config <records-file> [pem-file]}
+
+# The exclusions-file path: the main.exclusions_file record overrides the
+# default. An absent or unreadable file disables the override entirely —
+# the routing-profile list stays authoritative.
+TT_EXCLUSIONS_FILE_DEFAULT=/etc/trusttunnel/exclusions.toml
+
+# tt_exclusions_from_file <file> — splice the top-level exclusions array
+# out of a TOML fragment verbatim: from the `exclusions = [` line through
+# the closing bracket line, or the whole line when the array closes on
+# the same line. Nothing is re-escaped or re-indented; the fragment must
+# be valid TOML.
+tt_exclusions_from_file() {
+    awk '
+        /^exclusions[ \t]*=[ \t]*\[.*\][ \t]*(#.*)?$/ { print; exit }
+        /^exclusions[ \t]*=[ \t]*\[/ { found=1; print; next }
+        found && /^[ \t]*\][ \t]*(#.*)?$/ { print; exit }
+        found { print }
+    ' "$1"
+}
 
 # tt_esc <value> — print the value escaped for a TOML basic string:
 # backslashes first, then double quotes. sed, not awk: the awk gsub
@@ -107,7 +133,14 @@ printf 'killswitch_enabled = false\n'
 printf 'post_quantum_group_enabled = %s\n' "$(tt_bool endpoint.post_quantum 1)"
 printf 'exclusions_tcp_early_ack_enabled = true\n'
 printf 'exclusions_preresolve_enabled = true\n'
-printf 'exclusions = %s\n' "$(tt_array "$tt_exclusions_key")"
+tt_exclusions_file=$(tt_get main.exclusions_file "$TT_EXCLUSIONS_FILE_DEFAULT")
+if [ -n "$tt_exclusions_file" ] && [ -r "$tt_exclusions_file" ] \
+    && grep -q '^exclusions[ \t]*=' "$tt_exclusions_file"; then
+    printf '# exclusions: overridden by %s\n' "$tt_exclusions_file"
+    tt_exclusions_from_file "$tt_exclusions_file"
+else
+    printf 'exclusions = %s\n' "$(tt_array "$tt_exclusions_key")"
+fi
 
 # Endpoint block.
 printf '\n[endpoint]\n'

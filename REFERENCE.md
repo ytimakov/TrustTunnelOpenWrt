@@ -139,6 +139,7 @@ files when it starts and when it applies settings. Do not edit them.
 | `mode` | `tun` | The operation mode. `tun` routes the whole LAN through the client automatically. `proxy` runs a SOCKS5 listener instead (see the `proxy` section) |
 | `endpoint` | `Default` | The ACTIVE server. It is the `name` of the `endpoint` section that the tunnel uses now. The other saved servers stay configured but unused |
 | `log_level` | `info` | `info`, `debug` or `trace`. The last two are noisy. Set them only while you investigate a problem |
+| `exclusions_file` | `/etc/trusttunnel/exclusions.toml` | Fork feature. A plain TOML file with a top-level `exclusions = [...]` array. When the file exists and is readable, its array replaces the routing-profile list in the generated `client.toml` verbatim; the profile **mode** still drives `vpn_mode`. An absent file keeps the profile lists. See [CONFIGURATION.md](CONFIGURATION.md#exclusions-file-fork-feature) |
 
 ### Section `proxy`
 

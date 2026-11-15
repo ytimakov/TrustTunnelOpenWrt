@@ -84,6 +84,40 @@ mode. Traffic goes out directly until a profile routes it. In proxy mode
 the fallback keeps the legacy `domains.direct` list as the "do not
 bypass" exclusions.
 
+### Exclusions file (fork feature)
+
+Large rule sets (thousands of entries, e.g. a country-wide bypass list)
+are unwieldy as UCI lists and choke the LuCI profile page. This fork
+adds an alternative: a plain TOML file whose top-level `exclusions`
+array replaces the routing-profile list in the generated
+`client.toml` verbatim.
+
+```sh
+# /etc/trusttunnel/exclusions.toml — any TOML fragment with one
+# top-level array; domains, wildcards, IPs and CIDR ranges, same syntax
+# as the profile rules:
+#     exclusions = [
+#         "example.com",
+#         "*.example.com",
+#         "203.0.113.0/24",
+#     ]
+uci set trusttunnel.main.exclusions_file='/etc/trusttunnel/exclusions.toml'   # optional, this is the default
+uci commit trusttunnel && /etc/init.d/trusttunnel restart
+```
+
+Semantics to keep in mind:
+
+- When the file exists and holds the array, the profile's
+  `vpn_rules`/`bypass_rules` are **ignored** — the file wins. Remove (or
+  empty) the file to return to the profile lists.
+- The profile **mode** still drives `vpn_mode`. For the whole-runet
+  bypass ("runet direct, everything else through the tunnel") keep the
+  profile in `vpn` mode and let the file carry the direct list.
+- The file is spliced as-is: its TOML validity is the author's
+  responsibility.
+- A commented `# exclusions: overridden by ...` line in
+  `/var/etc/trusttunnel/client.toml` shows the file that won.
+
 You can save several servers, but only one is active. The shipped
 `endpoint` section already carries `name 'Default'`, and
 `main.endpoint` selects it. To save another server, add a second
