@@ -172,7 +172,7 @@ certificate reach the generated client configuration.
 | `has_ipv6` | `1` | The server carries IPv6 |
 | `skip_verification` | `0` | Accept any certificate. This option removes the protection against a substituted server. Pin the certificate instead whenever you can |
 | `certificate` | — | The pinned server certificate (PEM). An empty value means the system trust store. The trust store requires the `ca-bundle` package |
-| `dns_upstream` | — | The DNS that the client itself uses, for example for the exclusion domains it pre-resolves. An empty value means the client default (AdGuard DNS unfiltered) |
+| `dns_upstream` | — | The DNS that the client itself uses, for example for the exclusion domains it pre-resolves. An empty value means the client default (AdGuard DNS unfiltered). Fork caveat: an IP-literal TLS/DoT upstream (`tls://1.1.1.1`) breaks when its connection goes THROUGH the tunnel — such ClientHello carries no SNI and this endpoint drops no-SNI TLS flows (the connection hangs unanswered). In `bypass`/selective routing the upstream goes direct and works; in `vpn`/general routing prefer the default AdGuard DNS (plain UDP) or a hostname form (`tls://cloudflare-dns.com`, `https://dns.adguard.com/dns-query`) whose ClientHello carries SNI |
 | `routing_profile` | `Default` | The routing profile that THIS server uses while it is active. An empty value, or a name that no longer matches a profile, uses the direct-by-default rule in TUN mode (nothing is routed) and the legacy `domains.direct` list in proxy mode |
 
 ### Section `network`

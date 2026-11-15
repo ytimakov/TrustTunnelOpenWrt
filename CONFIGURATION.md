@@ -63,7 +63,7 @@ uci set trusttunnel.endpoint.hostname='tt.example.net'
 uci add_list trusttunnel.endpoint.address='198.51.100.7:443'
 uci set trusttunnel.endpoint.username='router'
 uci set trusttunnel.endpoint.password='change-me'
-uci add_list trusttunnel.endpoint.dns_upstream='1.1.1.1'
+uci add_list trusttunnel.endpoint.dns_upstream='tls://cloudflare-dns.com'
 uci set trusttunnel.endpoint.custom_sni='tt.example.net'
 uci set trusttunnel.endpoint.client_random='0a1b2c'
 uci add trusttunnel routing_profile
