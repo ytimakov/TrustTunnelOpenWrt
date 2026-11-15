@@ -118,6 +118,18 @@ Semantics to keep in mind:
 - A commented `# exclusions: overridden by ...` line in
   `/var/etc/trusttunnel/client.toml` shows the file that won.
 
+The patch ships a generator for the country-wide bypass list:
+
+```sh
+/usr/libexec/trusttunnel/gen-exclusions --restart
+```
+
+It writes `/etc/trusttunnel/exclusions.toml` from the curated domain
+preset plus the live RIPE NCC country-resource-list for RU (IPv4 range
+entries expand into CIDR blocks). `--from-json FILE` runs it offline
+against a cached response. Rerun it occasionally to refresh the
+prefixes.
+
 You can save several servers, but only one is active. The shipped
 `endpoint` section already carries `name 'Default'`, and
 `main.endpoint` selects it. To save another server, add a second

@@ -129,7 +129,19 @@ to remember:
   the unpatched generator.
 
 Deliver the exclusions fragment — a plain TOML file with a single
-top-level array — to `/etc/trusttunnel/exclusions.toml`:
+top-level array — to `/etc/trusttunnel/exclusions.toml`. The patch also
+installs a **runet-fragment builder** on the router, so the list can be
+generated on the box itself (the curated domain preset + the live RIPE
+NCC country-resource-list for RU; IPv4 range entries expand into CIDR
+blocks):
+
+```sh
+/usr/libexec/trusttunnel/gen-exclusions --restart
+```
+
+`--from-json FILE` feeds it a cached country-resource-list response
+(offline runs), `-o PATH` moves the output elsewhere. Or deliver a
+hand-made fragment instead:
 
 ```sh
 scp trusttunnel_exclusions.toml root@192.168.1.1:/etc/trusttunnel/exclusions.toml
